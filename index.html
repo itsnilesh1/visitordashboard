@@ -822,16 +822,7 @@
 </div>
 
 <script>
-  const allowedHost = "dashboard.yourdomain.com";
 
-if (window.location.hostname !== allowedHost) {
-  document.body.innerHTML = `
-    <h1 style="color:red;text-align:center;margin-top:20%">
-    ACCESS DENIED
-    </h1>
-  `;
-  throw new Error("Blocked access");
-}
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA
 // ═══════════════════════════════════════════════════════════
