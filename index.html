@@ -1365,6 +1365,9 @@ function init() {
 }
 
 loadData();
+  if (window.location.hostname.includes('github.io')) {
+  document.body.innerHTML = "Access Denied";
+}
 </script>
 </body>
 </html>
