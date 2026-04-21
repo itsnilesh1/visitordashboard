@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Visitor Intelligence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-void: #020408;
+    --bg-deep: #050d14;
+    --bg-panel: #071320;
+    --bg-card: #0a1a2e;
+    --bg-card2: #081525;
+    --border-glow: rgba(0,255,180,0.15);
+    --border-subtle: rgba(0,200,150,0.08);
+    --neon-green: #00ffb3;
+    --neon-cyan: #00d4ff;
+    --neon-blue: #0080ff;
+    --neon-red: #ff3355;
+    --neon-amber: #ffaa00;
+    --text-primary: #e0fff5;
+    --text-secondary: #7ab8a8;
+    --text-muted: #3a6a5a;
+    --text-dim: #1e4035;
+    --glow-green: 0 0 20px rgba(0,255,179,0.4), 0 0 60px rgba(0,255,179,0.1);
+    --glow-cyan: 0 0 20px rgba(0,212,255,0.4), 0 0 60px rgba(0,212,255,0.1);
+    --glow-red: 0 0 20px rgba(255,51,85,0.4), 0 0 60px rgba(255,51,85,0.1);
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-display: 'Orbitron', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BG ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,255,179,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,179,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,100,80,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 90%, rgba(0,60,120,0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  #app { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    background: linear-gradient(135deg, rgba(7,19,32,0.98), rgba(5,13,20,0.98));
+    border-bottom: 1px solid var(--border-glow);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(0,255,179,0.1);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .header-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--neon-green);
+    text-shadow: var(--glow-green);
+    text-transform: uppercase;
+  }
+  .header-subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .header-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,255,179,0.06);
+    border: 1px solid rgba(0,255,179,0.25);
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--neon-green);
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--neon-green);
+    box-shadow: 0 0 8px var(--neon-green);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.3;transform:scale(0.6)}
+  }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  #clock {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--neon-cyan);
+    text-shadow: var(--glow-cyan);
+    letter-spacing: 0.1em;
+  }
+  #datestamp {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+  }
+
+  /* ── LAYOUT ── */
+  .main { padding: 24px 32px 48px; max-width: 1600px; margin: 0 auto; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    margin-top: 32px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-glow), transparent);
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .kpi-card {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px 18px;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--neon-green));
+    opacity: 0.7;
+    box-shadow: 0 0 12px var(--accent, var(--neon-green));
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent, var(--neon-green));
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(0,255,179,0.08);
+  }
+  .kpi-icon {
+    font-size: 1.3rem; margin-bottom: 10px;
+    display: inline-block;
+    filter: drop-shadow(0 0 6px var(--accent, var(--neon-green)));
+  }
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: 0.05em;
+  }
+  .kpi-sub {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    letter-spacing: 0.1em;
+  }
+  .kpi-badge {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    padding: 2px 7px; border-radius: 3px;
+    letter-spacing: 0.1em;
+    color: var(--accent, var(--neon-green));
+    background: rgba(0,255,179,0.07);
+    border: 1px solid rgba(0,255,179,0.15);
+  }
+  .kpi-bg-num {
+    position: absolute; bottom: -8px; right: 10px;
+    font-family: var(--font-display);
+    font-size: 4.5rem;
+    font-weight: 900;
+    color: rgba(255,255,255,0.02);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  /* ── CHARTS ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .charts-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .chart-panel {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-panel::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+  }
+  .chart-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .chart-tag {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    padding: 2px 8px; border-radius: 3px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── FILTERS ── */
+  .filter-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .filter-chip {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    background: transparent;
+    transition: all 0.18s;
+    text-transform: uppercase;
+  }
+  .filter-chip:hover, .filter-chip.active {
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+    background: rgba(0,255,179,0.06);
+    box-shadow: 0 0 10px rgba(0,255,179,0.1);
+  }
+
+  /* ── TABLE ── */
+  .table-panel {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .table-header-bar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .table-title {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    background: rgba(0,255,179,0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: 5px;
+    padding: 7px 14px 7px 34px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .search-wrap input:focus { border-color: var(--neon-green); }
+  .search-wrap input::placeholder { color: var(--text-dim); }
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 0.7rem; color: var(--text-muted); pointer-events: none;
+  }
+  .table-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .table-select {
+    background: rgba(0,255,179,0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: 5px;
+    padding: 6px 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    outline: none;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+  .table-select:focus { border-color: var(--neon-green); }
+  .table-select option { background: var(--bg-deep); }
+  .tbl-wrap { overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+  thead tr { background: rgba(0,255,179,0.03); }
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    font-family: var(--font-display);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--neon-green); }
+  thead th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+  tbody tr {
+    border-bottom: 1px solid rgba(0,255,179,0.04);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(0,255,179,0.04); }
+  tbody td { padding: 9px 14px; color: var(--text-secondary); white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 3px;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-new { background: rgba(0,255,179,0.1); color: var(--neon-green); border: 1px solid rgba(0,255,179,0.2); }
+  .badge-repeat { background: rgba(0,212,255,0.1); color: var(--neon-cyan); border: 1px solid rgba(0,212,255,0.2); }
+  .badge-hot { background: rgba(255,51,85,0.1); color: var(--neon-red); border: 1px solid rgba(255,51,85,0.2); }
+  .vid-tag { color: var(--neon-cyan); font-weight: 600; letter-spacing: 0.08em; }
+  .flag-emoji { margin-right: 5px; }
+
+  /* pagination */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .pagination-info { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.08em; }
+  .pagination-btns { display: flex; gap: 6px; }
+  .page-btn {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    padding: 5px 11px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .page-btn:hover, .page-btn.active-page {
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+    background: rgba(0,255,179,0.05);
+  }
+
+  /* ── BOTTOM GRID ── */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* ── ACTIVITY FEED ── */
+  .feed-panel {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0,255,179,0.02);
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .feed-scroll {
+    height: 340px; overflow-y: auto;
+    padding: 6px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,255,179,0.2) transparent;
+  }
+  .feed-item {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 10px;
+    padding: 8px 18px;
+    border-bottom: 1px solid rgba(0,255,179,0.03);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    transition: background 0.15s;
+  }
+  .feed-item:hover { background: rgba(0,255,179,0.03); }
+  .feed-time { color: var(--text-muted); letter-spacing: 0.05em; padding-top: 2px; }
+  .feed-body { display: flex; flex-direction: column; gap: 3px; }
+  .feed-vid { color: var(--neon-cyan); font-weight: 600; }
+  .feed-loc { color: var(--text-muted); }
+  .feed-page { color: var(--neon-green); }
+  .feed-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .feed-label-new { color: var(--neon-green); font-size: 0.55rem; border: 1px solid rgba(0,255,179,0.25); padding: 1px 5px; border-radius: 2px; }
+  .feed-label-ret { color: var(--neon-cyan); font-size: 0.55rem; border: 1px solid rgba(0,212,255,0.25); padding: 1px 5px; border-radius: 2px; }
+  .feed-count { color: var(--text-muted); font-size: 0.58rem; }
+
+  /* ── INSIGHTS ── */
+  .insights-panel {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .insights-list { padding: 8px 0; }
+  .insight-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(0,255,179,0.04);
+    transition: background 0.15s;
+  }
+  .insight-item:hover { background: rgba(0,255,179,0.025); }
+  .insight-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .insight-text {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .insight-text strong { color: var(--neon-green); font-weight: 600; }
+  .insight-tag {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(2,4,8,0.85);
+    backdrop-filter: blur(8px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-drawer {
+    position: fixed; top: 0; right: -600px; bottom: 0;
+    width: min(600px, 100vw);
+    background: linear-gradient(160deg, #071824, #040f1a);
+    border-left: 1px solid var(--border-glow);
+    z-index: 201;
+    overflow-y: auto;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,255,179,0.2) transparent;
+    box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+  }
+  .modal-overlay.open .modal-drawer { right: 0; }
+  .modal-top {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-glow);
+    background: rgba(0,255,179,0.02);
+    position: sticky; top: 0;
+    backdrop-filter: blur(10px);
+    z-index: 10;
+  }
+  .modal-vid {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--neon-green);
+    letter-spacing: 0.1em;
+  }
+  .modal-close {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { border-color: var(--neon-red); color: var(--neon-red); }
+  .modal-body { padding: 20px 24px; }
+  .modal-section-title {
+    font-family: var(--font-display);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    margin-top: 20px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-field {
+    background: rgba(0,255,179,0.025);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .modal-field-label {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .modal-field-val {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .modal-field.full { grid-column: 1 / -1; }
+  .timeline-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(0,255,179,0.06);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+  }
+  .timeline-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--neon-green);
+    box-shadow: 0 0 6px var(--neon-green);
+    margin-top: 4px; flex-shrink: 0;
+  }
+  .timeline-ts { color: var(--neon-cyan); white-space: nowrap; }
+  .timeline-label { color: var(--text-muted); margin-left: 4px; }
+
+  /* ── SHIMMER ── */
+  .shimmer-wrap { display: none; }
+  .shimmer {
+    background: linear-gradient(90deg, rgba(0,255,179,0.03) 25%, rgba(0,255,179,0.07) 50%, rgba(0,255,179,0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    height: 14px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid-2 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .header { padding: 12px 16px; }
+    .header-title { font-size: 0.85rem; }
+    .header-center { display: none; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid-2 { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    .table-filters { flex-direction: column; align-items: flex-start; }
+    .search-wrap input { width: 160px; }
+  }
+  @media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .header-right { display: none; }
+  }
+
+  /* ── FADE IN ── */
+  .fade-in {
+    opacity: 0; transform: translateY(18px);
+    animation: fade-in 0.5s ease forwards;
+  }
+  @keyframes fade-in { to { opacity: 1; transform: translateY(0); } }
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.1s; }
+  .delay-3 { animation-delay: 0.15s; }
+  .delay-4 { animation-delay: 0.2s; }
+  .delay-5 { animation-delay: 0.25s; }
+
+  /* counter animation */
+  .count-val { display: inline-block; }
+  
+  /* empty state */
+  .empty-state {
+    text-align: center; padding: 48px 20px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-title">⬡ Visitor Intelligence Dashboard</div>
+    <div class="header-subtitle">Private Analytics Command Center · v1.0</div>
+  </div>
+  <div class="header-center">
+    <div class="live-badge"><span class="live-dot"></span>LIVE DATA STREAM</div>
+  </div>
+  <div class="header-right">
+    <div id="clock">--:--:--</div>
+    <div id="datestamp">Loading...</div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- KPI -->
+  <div class="section-label">INTELLIGENCE OVERVIEW</div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- TIME FILTERS -->
+  <div class="section-label">ANALYTICS</div>
+  <div class="filter-bar" id="timeFilters">
+    <span class="filter-chip active" data-range="all">All Time</span>
+    <span class="filter-chip" data-range="today">Today</span>
+    <span class="filter-chip" data-range="7">7 Days</span>
+    <span class="filter-chip" data-range="30">30 Days</span>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="charts-grid" style="margin-bottom:14px;">
+    <div class="chart-panel fade-in delay-1">
+      <div class="chart-header">
+        <div class="chart-title">Visits Per Day</div>
+        <div class="chart-tag">LINE / TREND</div>
+      </div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="chartVisitsDay"></canvas></div>
+    </div>
+    <div class="chart-panel fade-in delay-2">
+      <div class="chart-header">
+        <div class="chart-title">Country Distribution</div>
+        <div class="chart-tag">DOUGHNUT</div>
+      </div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="chartCountry"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="charts-grid-2">
+    <div class="chart-panel fade-in delay-2">
+      <div class="chart-header">
+        <div class="chart-title">Unique Visitors / Day</div>
+        <div class="chart-tag">BAR</div>
+      </div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="chartUniqueDay"></canvas></div>
+    </div>
+    <div class="chart-panel fade-in delay-3">
+      <div class="chart-header">
+        <div class="chart-title">Platform Breakdown</div>
+        <div class="chart-tag">HORIZONTAL BAR</div>
+      </div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="chartPlatform"></canvas></div>
+    </div>
+    <div class="chart-panel fade-in delay-4">
+      <div class="chart-header">
+        <div class="chart-title">New vs Returning</div>
+        <div class="chart-tag">DOUGHNUT</div>
+      </div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="chartNewReturn"></canvas></div>
+    </div>
+  </div>
+
+  <!-- VISITOR TABLE -->
+  <div class="section-label">VISITOR INTELLIGENCE TABLE</div>
+  <div class="table-panel fade-in delay-3">
+    <div class="table-header-bar">
+      <div class="table-title">All Visitors</div>
+      <div class="table-filters">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="tableSearch" placeholder="Search visitor, IP, country..."/>
+        </div>
+        <select class="table-select" id="filterCountry"><option value="">All Countries</option></select>
+        <select class="table-select" id="filterType">
+          <option value="">All Types</option>
+          <option value="new">New</option>
+          <option value="repeat">Repeat</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr id="tableHead"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="section-label">ACTIVITY & INSIGHTS</div>
+  <div class="bottom-grid">
+    <!-- FEED -->
+    <div class="feed-panel fade-in delay-4">
+      <div class="panel-head">
+        <div class="panel-title">⚡ Recent Activity Feed</div>
+        <div class="chart-tag">TERMINAL</div>
+      </div>
+      <div class="feed-scroll" id="activityFeed"></div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="insights-panel fade-in delay-5">
+      <div class="panel-head">
+        <div class="panel-title">◈ Intelligence Insights</div>
+        <div class="chart-tag">AUTO-GENERATED</div>
+      </div>
+      <div class="insights-list" id="insightsList"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- MODAL OVERLAY -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-drawer" id="modalDrawer">
+    <div class="modal-top">
+      <div class="modal-vid" id="modalVid">--</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// MOCK DATA
+// ═══════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTZ5izSAOckMmmLTKEmWpfvB9HYQYEC9L4Pj1oKHuqKHy5wVW5Q_oktLcItubRwNLf/exec';
+const MOCK_DATA = [
+  { visitorId:"VID-28472", firstSeen:"2026-04-21 09:05:00", lastSeen:"2026-04-21 17:22:00", todayDate:"2026-04-21", todayVisitCount:4, totalVisits:12, allVisitTimes:"2026-04-21 09:05:00 | 2026-04-21 11:33:00 | 2026-04-21 14:10:00 | 2026-04-21 17:22:00", ip:"103.21.x.x", city:"Pune", region:"Maharashtra", country:"India", timezone:"Asia/Kolkata", org:"Jio", page:"https://portfolio.dev/", referrer:"Direct", userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", language:"en-IN", platform:"Win32", screen:"1920x1080" },
+  { visitorId:"VID-19382", firstSeen:"2026-04-20 14:20:00", lastSeen:"2026-04-21 08:44:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:6, allVisitTimes:"2026-04-21 08:44:00", ip:"49.37.x.x", city:"Mumbai", region:"Maharashtra", country:"India", timezone:"Asia/Kolkata", org:"Airtel", page:"https://portfolio.dev/projects", referrer:"linkedin.com", userAgent:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15", language:"en-IN", platform:"iPhone", screen:"390x844" },
+  { visitorId:"VID-57291", firstSeen:"2026-04-21 11:00:00", lastSeen:"2026-04-21 11:00:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:1, allVisitTimes:"2026-04-21 11:00:00", ip:"35.190.x.x", city:"San Francisco", region:"California", country:"United States", timezone:"America/Los_Angeles", org:"Google LLC", page:"https://portfolio.dev/", referrer:"google.com", userAgent:"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36", language:"en-US", platform:"MacIntel", screen:"2560x1600" },
+  { visitorId:"VID-83740", firstSeen:"2026-04-19 08:00:00", lastSeen:"2026-04-21 16:05:00", todayDate:"2026-04-21", todayVisitCount:2, totalVisits:9, allVisitTimes:"2026-04-21 10:20:00 | 2026-04-21 16:05:00", ip:"154.83.x.x", city:"London", region:"England", country:"United Kingdom", timezone:"Europe/London", org:"BT Group", page:"https://portfolio.dev/contact", referrer:"Direct", userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", language:"en-GB", platform:"Win32", screen:"1366x768" },
+  { visitorId:"VID-64012", firstSeen:"2026-04-21 13:30:00", lastSeen:"2026-04-21 13:30:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:1, allVisitTimes:"2026-04-21 13:30:00", ip:"77.68.x.x", city:"Berlin", region:"Berlin", country:"Germany", timezone:"Europe/Berlin", org:"Deutsche Telekom", page:"https://portfolio.dev/projects", referrer:"twitter.com", userAgent:"Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36", language:"de-DE", platform:"Linux armv8l", screen:"1080x2400" },
+  { visitorId:"VID-31045", firstSeen:"2026-04-18 06:10:00", lastSeen:"2026-04-21 07:55:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:15, allVisitTimes:"2026-04-21 07:55:00", ip:"202.43.x.x", city:"Tokyo", region:"Tokyo", country:"Japan", timezone:"Asia/Tokyo", org:"NTT", page:"https://portfolio.dev/", referrer:"github.com", userAgent:"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/537.36", language:"ja-JP", platform:"MacIntel", screen:"1440x900" },
+  { visitorId:"VID-90211", firstSeen:"2026-04-21 15:50:00", lastSeen:"2026-04-21 15:50:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:1, allVisitTimes:"2026-04-21 15:50:00", ip:"41.76.x.x", city:"Nairobi", region:"Nairobi", country:"Kenya", timezone:"Africa/Nairobi", org:"Safaricom", page:"https://portfolio.dev/about", referrer:"Direct", userAgent:"Mozilla/5.0 (Linux; Android 13; Samsung Galaxy S22) AppleWebKit/537.36", language:"sw-KE", platform:"Linux armv8l", screen:"1080x2340" },
+  { visitorId:"VID-44391", firstSeen:"2026-04-17 20:00:00", lastSeen:"2026-04-21 18:10:00", todayDate:"2026-04-21", todayVisitCount:3, totalVisits:7, allVisitTimes:"2026-04-21 12:00:00 | 2026-04-21 15:00:00 | 2026-04-21 18:10:00", ip:"186.71.x.x", city:"São Paulo", region:"São Paulo", country:"Brazil", timezone:"America/Sao_Paulo", org:"Claro", page:"https://portfolio.dev/projects", referrer:"Direct", userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123", language:"pt-BR", platform:"Win32", screen:"1920x1080" },
+  { visitorId:"VID-72810", firstSeen:"2026-04-20 10:00:00", lastSeen:"2026-04-21 10:30:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:3, allVisitTimes:"2026-04-21 10:30:00", ip:"103.99.x.x", city:"Bangalore", region:"Karnataka", country:"India", timezone:"Asia/Kolkata", org:"BSNL", page:"https://portfolio.dev/contact", referrer:"linkedin.com", userAgent:"Mozilla/5.0 (Linux; Android 12; Redmi Note 11)", language:"en-IN", platform:"Linux armv8l", screen:"1080x2400" },
+  { visitorId:"VID-55603", firstSeen:"2026-04-21 16:45:00", lastSeen:"2026-04-21 16:45:00", todayDate:"2026-04-21", todayVisitCount:1, totalVisits:1, allVisitTimes:"2026-04-21 16:45:00", ip:"31.13.x.x", city:"Paris", region:"Île-de-France", country:"France", timezone:"Europe/Paris", org:"Orange", page:"https://portfolio.dev/", referrer:"twitter.com", userAgent:"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", language:"fr-FR", platform:"MacIntel", screen:"1680x1050" },
+  { visitorId:"VID-11209", firstSeen:"2026-04-15 09:00:00", lastSeen:"2026-04-20 22:00:00", todayDate:"2026-04-20", todayVisitCount:2, totalVisits:10, allVisitTimes:"2026-04-20 18:00:00 | 2026-04-20 22:00:00", ip:"58.96.x.x", city:"Sydney", region:"New South Wales", country:"Australia", timezone:"Australia/Sydney", org:"Telstra", page:"https://portfolio.dev/projects", referrer:"github.com", userAgent:"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36", language:"en-AU", platform:"Win32", screen:"1920x1200" },
+  { visitorId:"VID-38874", firstSeen:"2026-04-19 14:00:00", lastSeen:"2026-04-20 14:00:00", todayDate:"2026-04-20", todayVisitCount:1, totalVisits:4, allVisitTimes:"2026-04-20 14:00:00", ip:"122.160.x.x", city:"Delhi", region:"Delhi", country:"India", timezone:"Asia/Kolkata", org:"ACT Fibernet", page:"https://portfolio.dev/", referrer:"Direct", userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120", language:"en-IN", platform:"Win32", screen:"1366x768" },
+  { visitorId:"VID-62500", firstSeen:"2026-04-18 08:00:00", lastSeen:"2026-04-19 20:00:00", todayDate:"2026-04-19", todayVisitCount:2, totalVisits:5, allVisitTimes:"2026-04-19 10:00:00 | 2026-04-19 20:00:00", ip:"5.62.x.x", city:"Amsterdam", region:"North Holland", country:"Netherlands", timezone:"Europe/Amsterdam", org:"Cloudflare", page:"https://portfolio.dev/about", referrer:"google.com", userAgent:"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36", language:"nl-NL", platform:"Linux x86_64", screen:"2560x1440" },
+  { visitorId:"VID-74391", firstSeen:"2026-04-17 11:00:00", lastSeen:"2026-04-18 11:00:00", todayDate:"2026-04-18", todayVisitCount:1, totalVisits:2, allVisitTimes:"2026-04-18 11:00:00", ip:"110.34.x.x", city:"Hyderabad", region:"Telangana", country:"India", timezone:"Asia/Kolkata", org:"Hathway", page:"https://portfolio.dev/projects", referrer:"Direct", userAgent:"Mozilla/5.0 (Linux; Android 11; Poco X3)", language:"en-IN", platform:"Linux armv8l", screen:"1080x2400" },
+];
+
+// ═══════════════════════════════════════════════════════════
+// DATA PROCESSING FUNCTIONS
+// ═══════════════════════════════════════════════════════════
+let allData = [];
+let filteredData = [];
+let currentPage = 1;
+const PAGE_SIZE = 8;
+let sortKey = null, sortAsc = true;
+let charts = {};
+
+function filterByRange(range) {
+  const today = '2026-04-21';
+  if (range === 'today') return allData.filter(v => v.todayDate === today);
+  if (range === '7') {
+    const cutoff = new Date('2026-04-15');
+    return allData.filter(v => new Date(v.firstSeen) >= cutoff);
+  }
+  if (range === '30') {
+    const cutoff = new Date('2026-03-22');
+    return allData.filter(v => new Date(v.firstSeen) >= cutoff);
+  }
+  return allData;
+}
+
+function computeTotalVisits(data) { return data.reduce((s,v) => s + v.totalVisits, 0); }
+function computeUniqueVisitors(data) { return data.length; }
+function computeRepeatVisitors(data) { return data.filter(v => v.totalVisits > 1).length; }
+function computeTodayVisits(data) { const t = '2026-04-21'; return data.filter(v => v.todayDate === t).reduce((s,v) => s + v.todayVisitCount, 0); }
+function computeMostActive(data) {
+  if (!data.length) return '--';
+  return data.reduce((a,b) => a.totalVisits > b.totalVisits ? a : b).visitorId;
+}
+function computeCountries(data) {
+  const m = {};
+  data.forEach(v => { m[v.country] = (m[v.country] || 0) + 1; });
+  return m;
+}
+function computeVisitsPerDay(data) {
+  const m = {};
+  data.forEach(v => {
+    (v.allVisitTimes || '').split(' | ').forEach(ts => {
+      const d = ts.split(' ')[0];
+      if (d) m[d] = (m[d] || 0) + 1;
+    });
+  });
+  return m;
+}
+function computeUniquePerDay(data) {
+  const m = {};
+  data.forEach(v => {
+    const d = v.todayDate;
+    if (!m[d]) m[d] = new Set();
+    m[d].add(v.visitorId);
+  });
+  const out = {};
+  Object.keys(m).forEach(d => out[d] = m[d].size);
+  return out;
+}
+function computePlatforms(data) {
+  const m = {};
+  data.forEach(v => {
+    let p = v.platform || 'Unknown';
+    if (p.includes('Win')) p = 'Windows';
+    else if (p.includes('iPhone') || p.includes('iPad')) p = 'iOS';
+    else if (p.includes('Mac')) p = 'macOS';
+    else if (p.includes('Linux arm')) p = 'Android';
+    else if (p.includes('Linux')) p = 'Linux';
+    m[p] = (m[p] || 0) + 1;
+  });
+  return m;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', {hour12: false});
+  document.getElementById('datestamp').textContent = now.toLocaleDateString('en-IN', {weekday:'short', year:'numeric', month:'short', day:'numeric'}).toUpperCase();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════
+// KPI CARDS
+// ═══════════════════════════════════════════════════════════
+function animateCount(el, target) {
+  let start = 0;
+  const dur = 1200, step = 16;
+  const inc = target / (dur / step);
+  const interval = setInterval(() => {
+    start = Math.min(start + inc, target);
+    el.textContent = Math.floor(start).toLocaleString();
+    if (start >= target) clearInterval(interval);
+  }, step);
+}
+
+function renderKPIs(data) {
+  const totalV = computeTotalVisits(data);
+  const uniqV = computeUniqueVisitors(data);
+  const repV = computeRepeatVisitors(data);
+  const todayV = computeTodayVisits(data);
+  const mostA = computeMostActive(data);
+  const countries = Object.keys(computeCountries(data)).length;
+
+  const cards = [
+    { icon:'⬢', label:'Total Visits', val:totalV, sub:'All recorded hits', badge:'TOTAL', accent:'var(--neon-green)' },
+    { icon:'◈', label:'Unique Visitors', val:uniqV, sub:'Distinct IDs tracked', badge:'UNIQUE', accent:'var(--neon-cyan)' },
+    { icon:'↻', label:'Repeat Visitors', val:repV, sub:`${uniqV > 0 ? Math.round(repV/uniqV*100) : 0}% of all visitors`, badge:'REPEAT', accent:'var(--neon-blue)' },
+    { icon:'◉', label:"Today's Visits", val:todayV, sub:'Apr 21, 2026', badge:'TODAY', accent:'var(--neon-amber)' },
+    { icon:'★', label:'Most Active', val:'', sub:mostA, badge:'TOP', accent:'var(--neon-green)', isText:true },
+    { icon:'⊕', label:'Countries Reached', val:countries, sub:'Global spread', badge:'GEO', accent:'var(--neon-red)' },
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = cards.map((c,i) => `
+    <div class="kpi-card fade-in delay-${i+1}" style="--accent:${c.accent}">
+      <div class="kpi-badge">${c.badge}</div>
+      <div class="kpi-icon">${c.icon}</div>
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value ${c.isText ? '' : 'count-val'}" id="kpi-${i}">${c.isText ? c.sub : '0'}</div>
+      <div class="kpi-sub">${c.isText ? '' : c.sub}</div>
+      <div class="kpi-bg-num">${c.isText ? '' : c.val}</div>
+    </div>
+  `).join('');
+
+  cards.forEach((c, i) => {
+    if (!c.isText) {
+      const el = document.getElementById(`kpi-${i}`);
+      animateCount(el, c.val);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════
+Chart.defaults.color = '#3a6a5a';
+Chart.defaults.borderColor = 'rgba(0,255,179,0.06)';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderVisitsPerDay(data) {
+  destroyChart('vpd');
+  const vpd = computeVisitsPerDay(data);
+  const labels = Object.keys(vpd).sort();
+  const vals = labels.map(l => vpd[l]);
+  const ctx = document.getElementById('chartVisitsDay').getContext('2d');
+  charts.vpd = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ label:'Visits', data:vals, borderColor:'#00ffb3', backgroundColor:'rgba(0,255,179,0.06)', borderWidth:2, pointBackgroundColor:'#00ffb3', pointRadius:4, pointHoverRadius:6, tension:0.4, fill:true }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{color:'#3a6a5a', font:{size:10}}, grid:{color:'rgba(0,255,179,0.04)'} }, y:{ ticks:{color:'#3a6a5a', font:{size:10}}, grid:{color:'rgba(0,255,179,0.05)'} } } }
+  });
+}
+
+function renderCountryChart(data) {
+  destroyChart('cty');
+  const m = computeCountries(data);
+  const labels = Object.keys(m); const vals = Object.values(m);
+  const colors = ['#00ffb3','#00d4ff','#0080ff','#ff3355','#ffaa00','#a259ff','#00ff88','#ff6633'];
+  const ctx = document.getElementById('chartCountry').getContext('2d');
+  charts.cty = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:vals, backgroundColor:colors.map(c => c+'44'), borderColor:colors, borderWidth:2, hoverBorderWidth:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ color:'#7ab8a8', font:{size:10}, padding:10, boxWidth:12 } } }, cutout:'65%' }
+  });
+}
+
+function renderUniquePerDay(data) {
+  destroyChart('upd');
+  const upd = computeUniquePerDay(data);
+  const labels = Object.keys(upd).sort(); const vals = labels.map(l => upd[l]);
+  const ctx = document.getElementById('chartUniqueDay').getContext('2d');
+  charts.upd = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Unique Visitors', data:vals, backgroundColor:'rgba(0,212,255,0.25)', borderColor:'#00d4ff', borderWidth:1.5, borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{color:'#3a6a5a', font:{size:9}}, grid:{display:false} }, y:{ ticks:{color:'#3a6a5a', font:{size:9}}, grid:{color:'rgba(0,212,255,0.04)'} } } }
+  });
+}
+
+function renderPlatformChart(data) {
+  destroyChart('plt');
+  const m = computePlatforms(data);
+  const labels = Object.keys(m); const vals = Object.values(m);
+  const ctx = document.getElementById('chartPlatform').getContext('2d');
+  charts.plt = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data:vals, backgroundColor:'rgba(0,128,255,0.25)', borderColor:'#0080ff', borderWidth:1.5, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{color:'#3a6a5a', font:{size:9}}, grid:{color:'rgba(0,128,255,0.04)'} }, y:{ ticks:{color:'#7ab8a8', font:{size:9}}, grid:{display:false} } } }
+  });
+}
+
+function renderNewReturn(data) {
+  destroyChart('nr');
+  const repeat = computeRepeatVisitors(data);
+  const newV = data.length - repeat;
+  const ctx = document.getElementById('chartNewReturn').getContext('2d');
+  charts.nr = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:['New','Returning'], datasets:[{ data:[newV, repeat], backgroundColor:['rgba(0,255,179,0.25)','rgba(0,212,255,0.25)'], borderColor:['#00ffb3','#00d4ff'], borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{ legend:{ position:'bottom', labels:{ color:'#7ab8a8', font:{size:10}, padding:10, boxWidth:12 } } } }
+  });
+}
+
+function renderAllCharts(data) {
+  renderVisitsPerDay(data);
+  renderCountryChart(data);
+  renderUniquePerDay(data);
+  renderPlatformChart(data);
+  renderNewReturn(data);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════════════════════
+const TABLE_COLS = [
+  { key:'visitorId', label:'Visitor ID' },
+  { key:'firstSeen', label:'First Seen' },
+  { key:'lastSeen', label:'Last Seen' },
+  { key:'todayVisitCount', label:'Today' },
+  { key:'totalVisits', label:'Total Visits' },
+  { key:'country', label:'Country' },
+  { key:'city', label:'City' },
+  { key:'ip', label:'IP' },
+  { key:'platform', label:'Platform' },
+  { key:'page', label:'Page' },
+];
+
+function buildTableHead() {
+  const tr = document.getElementById('tableHead');
+  tr.innerHTML = TABLE_COLS.map(c => `<th onclick="sortTable('${c.key}')">${c.label} <span class="sort-arrow">⇅</span></th>`).join('');
+}
+
+function applyFilters() {
+  const search = document.getElementById('tableSearch').value.toLowerCase();
+  const country = document.getElementById('filterCountry').value;
+  const type = document.getElementById('filterType').value;
+
+  filteredData = filteredData.filter(v => {
+    const matchSearch = !search || JSON.stringify(v).toLowerCase().includes(search);
+    const matchCountry = !country || v.country === country;
+    const matchType = !type || (type === 'new' ? v.totalVisits === 1 : v.totalVisits > 1);
+    return matchSearch && matchCountry && matchType;
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = true; }
+  filteredData.sort((a,b) => {
+    const av = a[key] || ''; const bv = b[key] || '';
+    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+  renderTable();
+}
+
+function getPageData() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  return filteredData.slice(start, start + PAGE_SIZE);
+}
+
+function pageRow(v) {
+  const isRepeat = v.totalVisits > 1;
+  const isHot = v.totalVisits >= 8;
+  let badge = isHot ? `<span class="badge badge-hot">HOT</span>` : isRepeat ? `<span class="badge badge-repeat">RETURNING</span>` : `<span class="badge badge-new">NEW</span>`;
+  const pagePath = v.page.replace('https://portfolio.dev', '');
+  return `
+    <tr onclick="openModal('${v.visitorId}')">
+      <td><span class="vid-tag">${v.visitorId}</span></td>
+      <td>${v.firstSeen.split(' ')[0]}<br><span style="color:var(--text-muted);font-size:0.58rem">${v.firstSeen.split(' ')[1]}</span></td>
+      <td>${v.lastSeen.split(' ')[0]}<br><span style="color:var(--text-muted);font-size:0.58rem">${v.lastSeen.split(' ')[1]}</span></td>
+      <td style="text-align:center">${v.todayVisitCount}</td>
+      <td style="text-align:center">${v.totalVisits} ${badge}</td>
+      <td>${v.country}</td>
+      <td>${v.city}</td>
+      <td style="color:var(--text-muted)">${v.ip}</td>
+      <td style="color:var(--text-muted)">${v.platform}</td>
+      <td style="color:var(--neon-green);max-width:140px;overflow:hidden;text-overflow:ellipsis">${pagePath || '/'}</td>
+    </tr>`;
+}
+
+function renderTable() {
+  const pg = getPageData();
+  const tbody = document.getElementById('tableBody');
+  if (!pg.length) {
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS.length}"><div class="empty-state"><div class="empty-icon">◌</div>NO MATCHING RECORDS FOUND</div></td></tr>`;
+  } else {
+    tbody.innerHTML = pg.map(pageRow).join('');
+  }
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = filteredData.length;
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('pagination');
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, total);
+
+  let btns = `<div class="pagination-info">SHOWING ${start}–${end} OF ${total} RECORDS</div>`;
+  btns += `<div class="pagination-btns">`;
+  btns += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>← PREV</button>`;
+  for (let p = 1; p <= pages; p++) {
+    btns += `<button class="page-btn ${p===currentPage?'active-page':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages||!pages?'disabled':''}>NEXT →</button>`;
+  btns += `</div>`;
+  el.innerHTML = btns;
+}
+
+function goPage(p) {
+  const pages = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (p < 1 || p > pages) return;
+  currentPage = p;
+  renderTable();
+}
+
+function populateCountryFilter() {
+  const sel = document.getElementById('filterCountry');
+  const countries = [...new Set(allData.map(v => v.country))].sort();
+  countries.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIVITY FEED
+// ═══════════════════════════════════════════════════════════
+function renderActivityFeed(data) {
+  const recent = [...data].sort((a,b) => new Date(b.lastSeen) - new Date(a.lastSeen)).slice(0, 25);
+  const feed = document.getElementById('activityFeed');
+  if (!recent.length) { feed.innerHTML = `<div class="empty-state"><div class="empty-icon">⌀</div>NO ACTIVITY</div>`; return; }
+  feed.innerHTML = recent.map(v => {
+    const isRepeat = v.totalVisits > 1;
+    const pagePath = v.page.replace('https://portfolio.dev','') || '/';
+    const label = isRepeat ? `<span class="feed-label-ret">RETURNING</span>` : `<span class="feed-label-new">NEW</span>`;
+    return `
+      <div class="feed-item">
+        <div class="feed-time">${v.lastSeen.split(' ')[1]}</div>
+        <div class="feed-body">
+          <div class="feed-vid">${v.visitorId}</div>
+          <div class="feed-loc">📍 ${v.city}, ${v.country}</div>
+          <div class="feed-page">→ ${pagePath}</div>
+          <div class="feed-meta">${label}<span class="feed-count">[ ${v.totalVisits} total visits ]</span></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSIGHTS
+// ═══════════════════════════════════════════════════════════
+function renderInsights(data) {
+  const countryMap = computeCountries(data);
+  const topCountry = Object.entries(countryMap).sort((a,b) => b[1]-a[1])[0];
+  const repeat = computeRepeatVisitors(data);
+  const newV = data.length - repeat;
+  const totalV = computeTotalVisits(data);
+  const todayV = computeTodayVisits(data);
+  const platMap = computePlatforms(data);
+  const topPlatform = Object.entries(platMap).sort((a,b) => b[1]-a[1])[0];
+  const pageMap = {};
+  data.forEach(v => { const p = v.page; pageMap[p] = (pageMap[p]||0)+1; });
+  const topPage = Object.entries(pageMap).sort((a,b) => b[1]-a[1])[0];
+  const vpd = computeVisitsPerDay(data);
+  const topDay = Object.entries(vpd).sort((a,b) => b[1]-a[1])[0];
+  const refs = {}; data.forEach(v => { refs[v.referrer] = (refs[v.referrer]||0)+1; });
+  const topRef = Object.entries(refs).sort((a,b) => b[1]-a[1])[0];
+  const repeatPct = data.length ? Math.round(repeat/data.length*100) : 0;
+
+  const insights = [
+    topCountry ? { icon:'🌍', text:`<strong>${topCountry[1]}</strong> visitors originated from <strong>${topCountry[0]}</strong>, the most active country.`, tag:'GEO INTELLIGENCE' } : null,
+    topPlatform ? { icon:'💻', text:`<strong>${topPlatform[0]}</strong> is the dominant platform, used by <strong>${topPlatform[1]}</strong> unique visitors.`, tag:'DEVICE ANALYTICS' } : null,
+    { icon:'↻', text:`<strong>${repeatPct}%</strong> of visitors are returning — engagement is <strong>${repeatPct > 40 ? 'strong' : 'growing'}</strong>.`, tag:'RETENTION METRIC' },
+    topPage ? { icon:'📄', text:`The most visited page is <strong>${topPage[0].replace('https://portfolio.dev','') || '/'}</strong> with <strong>${topPage[1]}</strong> hits.`, tag:'TOP PAGE' } : null,
+    topDay ? { icon:'📅', text:`Peak traffic day was <strong>${topDay[0]}</strong> with <strong>${topDay[1]}</strong> recorded page hits.`, tag:'PEAK ACTIVITY' } : null,
+    topRef ? { icon:'🔗', text:`Top traffic source is <strong>${topRef[0]}</strong> driving <strong>${topRef[1]}</strong> session(s).`, tag:'REFERRAL SOURCE' } : null,
+    { icon:'⬢', text:`<strong>${totalV}</strong> total visits logged from <strong>${data.length}</strong> unique visitor IDs.`, tag:'SUMMARY STAT' },
+    todayV > 0 ? { icon:'◉', text:`<strong>${todayV}</strong> visits recorded today — monitoring continues in real time.`, tag:'TODAY' } : null,
+  ].filter(Boolean);
+
+  document.getElementById('insightsList').innerHTML = insights.map(ins => `
+    <div class="insight-item">
+      <div class="insight-icon">${ins.icon}</div>
+      <div>
+        <div class="insight-text">${ins.text}</div>
+        <div class="insight-tag">// ${ins.tag}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════
+function openModal(vid) {
+  const v = allData.find(x => x.visitorId === vid);
+  if (!v) return;
+  document.getElementById('modalVid').textContent = v.visitorId;
+  const timestamps = (v.allVisitTimes || '').split(' | ').filter(Boolean);
+  const pagePath = v.page.replace('https://portfolio.dev','') || '/';
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-section-title">Identity & Location</div>
+    <div class="modal-grid">
+      <div class="modal-field"><div class="modal-field-label">Visitor ID</div><div class="modal-field-val" style="color:var(--neon-cyan)">${v.visitorId}</div></div>
+      <div class="modal-field"><div class="modal-field-label">IP Address</div><div class="modal-field-val">${v.ip}</div></div>
+      <div class="modal-field"><div class="modal-field-label">City</div><div class="modal-field-val">${v.city}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Region</div><div class="modal-field-val">${v.region}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Country</div><div class="modal-field-val">${v.country}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Timezone</div><div class="modal-field-val">${v.timezone}</div></div>
+      <div class="modal-field full"><div class="modal-field-label">Organization / Network</div><div class="modal-field-val">${v.org}</div></div>
+    </div>
+
+    <div class="modal-section-title">Visit Summary</div>
+    <div class="modal-grid">
+      <div class="modal-field"><div class="modal-field-label">First Seen</div><div class="modal-field-val" style="color:var(--neon-green)">${v.firstSeen}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Last Seen</div><div class="modal-field-val" style="color:var(--neon-green)">${v.lastSeen}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Total Visits</div><div class="modal-field-val">${v.totalVisits}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Today's Visits</div><div class="modal-field-val">${v.todayVisitCount}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Visitor Type</div><div class="modal-field-val">${v.totalVisits > 1 ? '<span style="color:var(--neon-cyan)">RETURNING</span>' : '<span style="color:var(--neon-green)">NEW</span>'}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Referrer</div><div class="modal-field-val">${v.referrer}</div></div>
+    </div>
+
+    <div class="modal-section-title">Device & Browser</div>
+    <div class="modal-grid">
+      <div class="modal-field"><div class="modal-field-label">Platform</div><div class="modal-field-val">${v.platform}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Screen Size</div><div class="modal-field-val">${v.screen}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Language</div><div class="modal-field-val">${v.language}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Page Visited</div><div class="modal-field-val" style="color:var(--neon-green)">${pagePath}</div></div>
+      <div class="modal-field full"><div class="modal-field-label">User Agent</div><div class="modal-field-val" style="font-size:0.62rem;color:var(--text-muted)">${v.userAgent}</div></div>
+    </div>
+
+    <div class="modal-section-title">Visit Timeline (${timestamps.length} Events)</div>
+    ${timestamps.reverse().map((ts, i) => `
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div><span class="timeline-ts">${ts}</span><span class="timeline-label">— visit #${timestamps.length - i}</span></div>
+      </div>`).join('')}
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+// ═══════════════════════════════════════════════════════════
+// TIME RANGE FILTER
+// ═══════════════════════════════════════════════════════════
+function setRange(range) {
+  filteredData = filterByRange(range);
+  renderKPIs(filteredData);
+  renderAllCharts(filteredData);
+  renderActivityFeed(filteredData);
+  renderInsights(filteredData);
+  renderTable();
+}
+
+document.getElementById('timeFilters').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  setRange(chip.dataset.range);
+});
+
+// Search/filter listeners
+document.getElementById('tableSearch').addEventListener('input', () => {
+  filteredData = filterByRange(document.querySelector('.filter-chip.active').dataset.range);
+  applyFilters();
+});
+document.getElementById('filterCountry').addEventListener('change', () => {
+  filteredData = filterByRange(document.querySelector('.filter-chip.active').dataset.range);
+  applyFilters();
+});
+document.getElementById('filterType').addEventListener('change', () => {
+  filteredData = filterByRange(document.querySelector('.filter-chip.active').dataset.range);
+  applyFilters();
+});
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+async function loadData() {
+  try {
+    const response = await fetch(APPS_SCRIPT_URL);
+    const result = await response.json();
+
+    if (!result.success || !Array.isArray(result.data)) {
+      throw new Error(result.error || 'Invalid API response');
+    }
+
+    allData = result.data;
+    filteredData = [...allData];
+    init();
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+
+    // fallback so dashboard still works visually if API fails
+    allData = MOCK_DATA;
+    filteredData = [...allData];
+    init();
+  }
+}
+
+function init() {
+  populateCountryFilter();
+  renderKPIs(filteredData);
+  buildTableHead();
+  renderTable();
+  renderAllCharts(filteredData);
+  renderActivityFeed(filteredData);
+  renderInsights(filteredData);
+}
+
+loadData();
+</script>
+</body>
+</html>
